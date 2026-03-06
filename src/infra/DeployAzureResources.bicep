@@ -4,7 +4,10 @@ param userPrincipalId string = deployer().objectId
 
 @minLength(1)
 @description('Primary location for all resources.')
-param location string = resourceGroup().location
+param location string = 'swedencentral'
+
+@description('Deploy App Service Plan and Web App resources. Set to false to skip VM-backed web resources when quota is unavailable.')
+param deployWebApp bool = true
 
 var cosmosDbName = '${uniqueString(resourceGroup().id)}-cosmosdb'
 var cosmosDbDatabaseName = 'zava'
@@ -15,9 +18,10 @@ var webAppName = '${uniqueString(resourceGroup().id)}-app'
 var appServicePlanName = '${uniqueString(resourceGroup().id)}-cosu-asp'
 var logAnalyticsName = '${uniqueString(resourceGroup().id)}-cosu-la'
 var appInsightsName = '${uniqueString(resourceGroup().id)}-cosu-ai'
-var webAppSku = 'S1'
+var webAppSku = 'B1'
 var registryName = '${uniqueString(resourceGroup().id)}cosureg'
 var registrySku = 'Standard'
+var rgTagDeploymentName = 'updateRgTags-${uniqueString(subscription().id, resourceGroup().name)}'
 
 var tags = {
   Project: 'Tech Workshop L300 - AI Apps and Agents'
@@ -29,7 +33,7 @@ var tags = {
 
 // Ensure the current resource group has the required tag via a subscription-scoped module
 module updateRgTags 'updateRgTags.bicep' = {
-  name: 'updateRgTags'
+  name: rgTagDeploymentName
   scope: subscription()
   params: {
     rgName: resourceGroup().name
@@ -177,7 +181,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-12-01' =
 }
 
 @description('Creates an Azure App Service Plan.')
-resource appServicePlan 'Microsoft.Web/serverFarms@2022-09-01' = {
+resource appServicePlan 'Microsoft.Web/serverFarms@2022-09-01' = if (deployWebApp) {
   name: appServicePlanName
   location: location
   kind: 'linux'
@@ -191,7 +195,7 @@ resource appServicePlan 'Microsoft.Web/serverFarms@2022-09-01' = {
 }
 
 @description('Creates an Azure App Service for Zava.')
-resource appServiceApp 'Microsoft.Web/sites@2022-09-01' = {
+resource appServiceApp 'Microsoft.Web/sites@2022-09-01' = if (deployWebApp) {
   name: webAppName
   location: location
   properties: {
@@ -287,6 +291,6 @@ resource cosmosDbProjectContributorRole 'Microsoft.Authorization/roleAssignments
 output cosmosDbEndpoint string = cosmosDbAccount.properties.documentEndpoint
 output storageAccountName string = storageAccount.name
 output container_registry_name string = containerRegistry.name
-output application_name string = appServiceApp.name
-output application_url string = appServiceApp.properties.hostNames[0]
+output application_name string = deployWebApp ? appServiceApp!.name : ''
+output application_url string = deployWebApp ? appServiceApp!.properties.hostNames[0] : ''
 
