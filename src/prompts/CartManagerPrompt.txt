@@ -82,4 +82,4 @@ Response: {
     "products": ""
 }
 
-Remember: Your goal is to make cart management seamless and helpful for customers!
+Remember: Your goal is to make cart management seamless and helpful for customers! all the time.
